@@ -54,8 +54,8 @@ class GuideTree:
         print(f'***********************************************************\n'
               f'{self.cache_uses} cache uses.\n'
               f'{self.existing_children_uses} existing children uses.')
+        self.output_data: list
         self.graph = graph_gen.graph_guide_tree(self)
-        self.output_data = outputs_gen.save_guide_tree(self)
         self.guide_nodes_series.to_csv(self.output_data[1].parent / 'sequence_series')
 
     def log(self, prev_nodes=0, message=None) -> None:
@@ -111,6 +111,7 @@ class GuideTree:
         # self.save_guide_nodes()
         # self.guide_nodes_all += next_nodes
         self.guide_nodes_current = next_nodes
+        self.output_data = outputs_gen.save_guide_tree(self)
 
         return None
 

@@ -101,7 +101,7 @@ class GuideNode:
             else:
                 for gi, duplex in enumerate(select_guides(
                         messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
-                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 5)):
+                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 15)):
 
                     # generate child nodes for the minimum number of guides to consider.
                     progressed_count = sum([1 for child in self.children if child.progressed_sequences])

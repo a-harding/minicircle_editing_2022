@@ -3,6 +3,7 @@
 import pandas as pd
 from type_definitions import NodeType, OutputNodes
 from pathlib import Path
+import copy
 
 
 def gen_dataframe(edit_tree, which_nodes: OutputNodes) -> pd.DataFrame:
@@ -49,7 +50,7 @@ def save_guide_tree(guide_tree) -> tuple:
 
     all_values = []
     for node in guide_tree.guide_nodes_all:
-        vars_dict = vars(node)
+        vars_dict = copy.copy(vars(node))
         vars_dict['progressed_sequences'] = [tup[0].seq for tup in node.progressed_sequences]
         vars_dict['progressed_indices'] = [tup[1] for tup in node.progressed_sequences]
         vars_dict['guide']: node.guide_name.split('_')[1]
