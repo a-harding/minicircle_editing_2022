@@ -19,7 +19,13 @@ def gen_dataframe(edit_tree, which_nodes: OutputNodes) -> pd.DataFrame:
 
     output_values = [vars(node) for node in selected_nodes] # a list of dicts
 
+    all_child_ids = []
+    for node in selected_nodes:
+        children_ids = [child.id for child in node.children]
+        all_child_ids.append(children_ids)
+
     output_df = pd.DataFrame(output_values)
+    output_df['children_id'] = all_child_ids
     output_df['sequence.seq'] = [node.sequence.seq for node in selected_nodes]
 
     return output_df
@@ -53,7 +59,8 @@ def save_guide_tree(guide_tree) -> tuple:
         vars_dict = copy.copy(vars(node))
         vars_dict['progressed_sequences'] = [tup[0].seq for tup in node.progressed_sequences]
         vars_dict['progressed_indices'] = [tup[1] for tup in node.progressed_sequences]
-        vars_dict['guide']: node.guide_name.split('_')[1]
+        vars_dict['guide'] = node.guide_name.split('_')[1]
+        vars_dict['children_id'] = [child.id for child in node.children]
         if node.prior:
             vars_dict['used_priors'] = True
         else:

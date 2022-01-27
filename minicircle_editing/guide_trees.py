@@ -43,7 +43,7 @@ class GuideTree:
 
         self.log(prev_nodes=0)
 
-        while (not self.is_complete) and (self.guide_levels < 30):
+        while (not self.is_complete) and (self.guide_levels < 20):
             nodes_to_process = len(self.guide_nodes_current)
             self.grow_tree()
             self.guide_levels += 1
@@ -86,10 +86,10 @@ class GuideTree:
 
         children = [self.guide_nodes_all[i] for i in matching_indices]
 
-        if matching_indices:
-            print('matches found ***************************************')
-        else:
-            print('no matches ********************')
+        # if matching_indices:
+        #     print('matches found ***************************************')
+        # else:
+        #     print('no matches ********************')
 
         return children
 

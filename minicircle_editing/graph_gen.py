@@ -7,6 +7,60 @@ from type_definitions import NodeType
 from run_settings import maximum_edit_graph_nodes
 
 
+def produce_match_string(edit_node) -> str:
+    """Creates a combined string of pre- and post-edit sequences, paired with the guide sequence."""
+
+    mismatch_set = {'gg', 'cc', 'aa', 'uu', 'ga', 'ag', 'ac', 'ca', 'cu', 'uc'}
+
+    current_m_idx = edit_node.mIndex
+    current_g_idx = edit_node.gIndex
+    prior_m_seq = edit_node.init_sequence.seq
+    post_m_seq = edit_node.sequence.seq
+    g_seq = edit_node.guide.seq
+
+    length_lead = 10
+    length_trail = 5
+
+    trimmed_prior_m_seq = f'{prior_m_seq[current_m_idx - length_lead:current_m_idx]}' \
+                          f'{prior_m_seq[current_m_idx].upper()}' \
+                          f'{prior_m_seq[current_m_idx + 1:current_m_idx + length_trail]}'
+    trimmed_post_m_seq = f'{post_m_seq[current_m_idx - length_lead:current_m_idx]}' \
+                         f'{post_m_seq[current_m_idx].upper()}' \
+                         f'{post_m_seq[current_m_idx + 1:current_m_idx + length_trail]}'
+    trimmed_g_seq = f'{g_seq[current_g_idx - length_lead:current_g_idx]}' \
+                    f'{g_seq[current_g_idx].upper()}' \
+                    f'{g_seq[current_g_idx + 1:current_g_idx + length_trail]}'
+
+    if len(trimmed_g_seq) < len(trimmed_post_m_seq):
+        missing = len(trimmed_post_m_seq) - len(trimmed_g_seq)
+        filler = missing * ' '
+        trimmed_g_seq = f'{trimmed_g_seq}{filler}'
+
+    def compare_sequences(s1, s2):
+        match_string = ''
+        for b1, b2 in zip(s1, s2):
+            if b2 == ' ':
+                result = ' '
+            else:
+                pair = (b1 + b2).lower()
+                if pair in mismatch_set:
+                    result = '.'
+                else:
+                    if pair in {'gu', 'ug'}:
+                        result = 'o'
+                    else:
+                        result = '|'
+            match_string = match_string + result
+        return match_string
+
+    prior_match = compare_sequences(trimmed_prior_m_seq, trimmed_g_seq)
+    post_match = compare_sequences(trimmed_post_m_seq, trimmed_g_seq)
+
+    compound_string = f'{trimmed_prior_m_seq}\n{prior_match}\n{trimmed_g_seq}\n{post_match}\n{trimmed_post_m_seq}'
+
+    return compound_string
+
+
 def graph_edit_tree(edit_tree) -> gv.Digraph:
     """Produces dot format Diagraph from the input list of edit nodes."""
 
@@ -27,13 +81,15 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
     colourschemes = {0: 'bupu', 1: 'purd', 2: 'pubu', 3: 'bugn', 4: 'blues', 5: 'greys', 6: 'oranges',
                      7: 'purples', 8: 'reds'}
     scheme = colourschemes[0]
-    graph.attr('node', style='filled', colorscheme=scheme + str(2 + 2))
+    graph.attr('node', style='filled', colorscheme=scheme + str(2 + 2), fontname='monospace')
 
     def create_edit_node_text(edit_node) -> str:
         """Produces text content for nodes in the tree graph."""
 
+        # if edit_node.node_type is NodeType.ROOT:
+        dock = f'Dock: {edit_node.edit_tree.guide_node.init_dock_idx}'
         id = f'ID: {edit_node.id}'
-        action_log = f'Action log: {edit_node.action_log}'
+        action_log = f'Action log: {edit_node.action_log[-5:]}'
         type = f'Node Type: {edit_node.node_type}'
         gIdx = f'Guide Index: {edit_node.gIndex}'
         mIdx = f'Seq Index: {edit_node.mIndex}'
@@ -54,8 +110,9 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
         seq_post = f'Seq pos: {edit_node.sequence.seq[edit_node.mIndex - 5:edit_node.mIndex + 5]}'
         guide = f'gSeq: {edit_node.guide.seq[edit_node.edit_tree.init_gIndex:]}'
         # pairs = f'Pairs: {node.pairs}'
+        match = produce_match_string(edit_node=edit_node)
 
-        text = f'{type}\n{mIdx} {gIdx}\n{action_log}\n{mfe}\n{mismatches}\n{seq_pre}\n{seq_post}\n{prob}\n{prob_prod}'
+        text = f'{dock}\n{gIdx}\n{mismatches}\n{action_log}\n{prob}\n{match}'
 
         return text
 
