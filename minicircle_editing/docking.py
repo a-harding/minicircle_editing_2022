@@ -168,23 +168,33 @@ def sort_candidates(mfe_df: pd.DataFrame, current_mIndex=0, initial=False) -> pd
     return adjusted_mfe.sort_values(by=['Adjusted_MFE'])
 
 
-def get_index(messenger_sequence: str, guide_sequence: str, mIndex: int):
+def get_index(messenger_sequence: str, guide_sequence: str, dock_index: int):
     """Aligns the candidate sequences and determines the base to begin editing - the gIndex."""
 
     match_set = {'gc', 'cg', 'au', 'ua', 'gu', 'ug'}
     anchor_length = 0
     mismatches = 0
     consecutive_mismatches = 0
+    index_chosen = False
 
-    for m, g in zip(messenger_sequence[mIndex:mIndex + len(guide_sequence)].lower(), guide_sequence.lower()):
+    # the minimum anchor length permissible by the 'run_settings' is passed without stopping (unless the
+    # 'mismatches_allowed' limit is exceeded in this area - unlikely). After which, the first mismatch
+    # encountered is the point at which editing begins - gIndex. This is regardless of whether the
+    # 'mismatches_allowed' limit has been reached.
+    for i, (m, g) in enumerate(zip(messenger_sequence[dock_index:dock_index + len(guide_sequence)], guide_sequence)):
         if m + g in match_set:
             consecutive_mismatches = 0
         else:
             mismatches += 1
             consecutive_mismatches += 1
+            if i >= min_anchor:
+                index_chosen = True
         anchor_length += 1
 
         if mismatches == mismatches_allowed:
+            index_chosen = True
+
+        if index_chosen:
             break
 
     gIndex = anchor_length - consecutive_mismatches
