@@ -6,7 +6,7 @@ import RNA
 import numpy as np
 import pandas as pd
 from edit_node import EditNodeRoot, EditNodeChild
-from run_settings import bulk_cofold, sequences_to_progress
+from run_settings import bulk_cofold, sequences_to_progress, min_mfe_to_progress
 from type_definitions import NodeType
 from graph_gen import graph_edit_tree
 from sequence_import import Sequence
@@ -550,6 +550,8 @@ class EditTree:
         comp_vars = [vars(node) for node in complete_nodes]
         # the list of dicts is used to make a DataFrame, enabling simple, multi-parameter sorting
         comp_df = pd.DataFrame(comp_vars)
+        comp_df = comp_df[comp_df['mfe'] < min_mfe_to_progress]
+
         ranked = comp_df.sort_values(by=['probability_product', 'mfe', 'mismatches', 'gIndex', 'edit_level'],
                                      ascending=[False, True, True, False, True])
         # original index is replaced by the ranked index. The ranked index is used to select the top n edit_nodes.
