@@ -1,5 +1,4 @@
 """Produces graphs, tables, and saves node raw data to disk."""
-import time
 
 import pandas as pd
 from type_definitions import NodeType, OutputNodes
@@ -31,7 +30,10 @@ def save_edit_tree(guide_node, which_nodes: OutputNodes) -> Path:
 
     df_of_edit_nodes = gen_dataframe(edit_tree=guide_node.edit_tree, which_nodes=which_nodes)
 
-    dest_addr = guide_node.guide_tree.log_path.parent / Path(guide_node.id) / Path('edit_node_values')
+    tree = guide_node.guide_tree
+    level = f'Level_{guide_node.guide_level:03d}'
+
+    dest_addr = tree.log_path.parent / tree.id / level / guide_node.id / 'edit_node_values'
     dest_addr.parent.mkdir(parents=True, exist_ok=True)
 
     df_of_edit_nodes.to_csv(dest_addr)
@@ -39,7 +41,7 @@ def save_edit_tree(guide_node, which_nodes: OutputNodes) -> Path:
     return dest_addr
 
 
-def save_guide_tree(guide_tree):
+def save_guide_tree(guide_tree) -> tuple:
     """Saves all guide node details to a DataFrame and outputs it as csv."""
 
     dest_addr = guide_tree.log_path.parent / Path(guide_tree.id) / Path('guide_node_values')
@@ -47,34 +49,28 @@ def save_guide_tree(guide_tree):
 
     all_values = []
     for node in guide_tree.guide_nodes_all:
-        node_dict = {
-            'id': node.id,
-            'is_terminal': node.is_terminal,
-            'init_sequence': node.init_sequence.seq,
-            'init_dock_idx': node.init_dock_idx,
-            'init_mIndex': node.init_mIndex,
-            'progressed_sequences': [tup[0].seq for tup in node.progressed_sequences],
-            'progressed_indices': [tup[1] for tup in node.progressed_sequences],
-            'guide': node.guide_name.split('_')[1]
-        }
+        vars_dict = vars(node)
+        vars_dict['progressed_sequences'] = [tup[0].seq for tup in node.progressed_sequences]
+        vars_dict['progressed_indices'] = [tup[1] for tup in node.progressed_sequences]
+        vars_dict['guide']: node.guide_name.split('_')[1]
         if node.prior:
-            node_dict['used_priors'] = True
+            vars_dict['used_priors'] = True
         else:
-            node_dict['used_priors'] = False
+            vars_dict['used_priors'] = False
         if node.parent:
-            node_dict['parent_id'] = node.parent.id
+            vars_dict['parent_id'] = node.parent.id
         else:
-            node_dict['parent_id'] = None
+            vars_dict['parent_id'] = None
 
-        if node_dict['progressed_indices']:
-            node_dict['end_mIndex'] = min(node_dict['progressed_indices'])
+        if vars_dict['progressed_indices']:
+            vars_dict['end_mIndex'] = min(vars_dict['progressed_indices'])
         else:
-            node_dict['end_mIndex'] = 1
+            vars_dict['end_mIndex'] = 1
 
-        all_values.append(node_dict)
+        all_values.append(vars_dict)
 
     guides_df = pd.DataFrame(all_values)
 
     guides_df.to_csv(dest_addr)
 
-    return guides_df
+    return guides_df, dest_addr

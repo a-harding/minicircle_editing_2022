@@ -28,7 +28,7 @@ def gen_setup_file(gene: str, paths: list[Path]) -> Path:
                 f'Path to gRNA pool: {path_g}\n'
                 f'\n*****\ngRNA SELECTION\n*****\n'
                 f'Number of gRNAs investigated (first round, subsequent rounds): {no_of_grnas_first}, '
-                f'{no_of_grnas_subsequent}\n'
+                f'{min_no_grnas_subsequent}\n'
                 f'Normalisation of docking by proximity to editing site: {docking_mode}\n'
                 f'How many previously used gRNAs are excluded from subsequent gRNA selection: {previous_gRNA_exclusion}\n'
                 f'Maximum number of sequences progressed from a single gRNA\'s editing tree: {sequences_to_progress}\n'

@@ -10,8 +10,11 @@ from run_settings import maximum_edit_graph_nodes
 def graph_edit_tree(edit_tree) -> gv.Digraph:
     """Produces dot format Diagraph from the input list of edit nodes."""
 
+    guide_tree = edit_tree.guide_node.guide_tree
+    level = f'Level_{edit_tree.guide_node.guide_level:03d}'
+
     file_name = Path(f'edit_tree_{edit_tree.id}')
-    dest_addr = edit_tree.guide_node.guide_tree.log_path.parent / Path(edit_tree.guide_node.id) / file_name
+    dest_addr = guide_tree.log_path.parent / guide_tree.id / level / edit_tree.guide_node.id / file_name
     dest_addr.parent.mkdir(parents=True, exist_ok=True)
     graph = gv.Digraph(engine='dot', format='svg')
 
@@ -144,19 +147,23 @@ def graph_guide_tree(guide_tree):
         # to define a percentage of progression.
         progress = ((init_dock_idx) / init_sequence.length) * 100
         # graph.attr('node', shape='ellipse', fillcolor=f'gray{100 - progress: 0.0f}')
-        graph.attr('node', shape='ellipse', fillcolor=f'gray99')
-        graph.node(str(node.id[-20:]), node_text)
+        if len(node.parents) > 1:
+            graph.attr('node', shape='ellipse', fillcolor=f'blue')
+        else:
+            graph.attr('node', shape='ellipse', fillcolor=f'gray99')
+        graph.node(str(node.id), node_text)
 
     # adds edge for each parent-child pair, even if the child has multiple parents
     for node in all_nodes:
-        if node.parent:
-            shapes = {1: 'normal', 2: 'box', 3: 'curve', 4: 'dot', 5: 'inv', 6: 'tee'}
-            colors = {1: 'green', 2: 'gold', 3: 'blue', 4: 'hotpink', 5: 'black', 6: 'azure4'}
-            guide_num = node.guide_num
-            seq_num = node.seq_num
-            graph.attr('edge', arrowhead=shapes[guide_num], color=colors[seq_num])
+        # if node.parent:
+        shapes = {1: 'normal', 2: 'box', 3: 'curve', 4: 'dot', 5: 'inv', 6: 'tee'}
+        colors = {1: 'green', 2: 'gold', 3: 'blue', 4: 'hotpink', 5: 'black', 6: 'azure4'}
+        guide_num = node.guide_num
+        seq_num = node.seq_num
+        graph.attr('edge', arrowhead=shapes[1], color=colors[1])
+        for child in node.children:
             # tail_name = parent, head_name = child
-            graph.edge(tail_name=node.parent.id[-20:], head_name=node.id[-20:])
+            graph.edge(tail_name=node.id, head_name=child.id)
 
     graph.attr('edge', style='solid')
 

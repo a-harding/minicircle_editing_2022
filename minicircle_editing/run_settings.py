@@ -6,11 +6,12 @@ from type_definitions import DockingMode, gRNAExclusion, EditMode, CofoldMode
 
 # edit_mode = EditMode.STEP  # which mode of editing will be used for node generation
 no_of_grnas_first = 3  # how many gRNAs to investigate with unedited sequence
-no_of_grnas_subsequent = 2  # how many gRNAs to investigate with partially edited sequences
+min_no_grnas_subsequent = 2  # how many gRNAs to investigate with partially edited sequences
+max_no_grnas_subsequent = 5
 guides_to_cofold = 50 # number of guides to send to RNAcofold during gRNA selection step
 cofold_mode = CofoldMode.TO_INDEX_PLUS # how much of the gRNA to send to RNAcofold
 guide_end_allowance = 3 # how many bases to disregard when calculating mismatches near the terminal end of a guide
-sequences_to_progress = 2  # how many edited sequences to take forward to next gRNA editing
+sequences_to_progress = 1  # how many edited sequences to take forward to next gRNA editing
 mismatch_threshold_anchor = 2  # no. of mismatches allowed when identifying gRNA anchors
 mismatch_threshold_editing = 2  # no. of mismatches allowed during editing before node becomes leaf
 editing_window = 7  # no. of mRNA bases beyond current bp to include in RNAcofold

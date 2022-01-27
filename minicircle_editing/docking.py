@@ -10,7 +10,7 @@ import RNA
 from sequence_import import Sequence
 from type_definitions import CofoldMode, DockingMode, gRNAExclusion
 from run_settings import (
-    no_of_grnas_first, no_of_grnas_subsequent, editing_window, docking_mode, max_anchor, min_anchor, guides_to_cofold,
+    no_of_grnas_first, max_no_grnas_subsequent, editing_window, docking_mode, max_anchor, min_anchor, guides_to_cofold,
     previous_gRNA_exclusion, cofold_mode, proportion_to_dock, minimum_mfe, guide_end_allowance,
     mismatch_threshold_anchor as mismatches_allowed
 )
@@ -94,7 +94,8 @@ def gen_cofold_string(messenger_sequence: str, guide_sequence: str, docking_idx:
             mrna_trimmed = messenger_sequence[midx_lower:midx_upper]
 
     else:
-        trimmed_index = int(len(guide_sequence) * proportion_to_dock)
+        # trimmed_index = int(len(guide_sequence) * proportion_to_dock)
+        trimmed_index = max_anchor
         guide_trimmed = guide_sequence[:trimmed_index]
 
     if (not gIndex) or (cofold_mode is not CofoldMode.EDITING_WINDOW):
@@ -230,7 +231,7 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
     if initial:
         no_of_guides = no_of_grnas_first
     else:
-        no_of_guides = no_of_grnas_subsequent
+        no_of_guides = max_no_grnas_subsequent
     # print('sleeping')
     # time.sleep(5)
     output_duplexes = []

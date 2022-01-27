@@ -5,11 +5,11 @@ and all the edits of that guide."""
 import pandas as pd
 import time
 import pickle
-from log_gen import convert_timestamp, append_log
 from guide_node import GuideNode
 from pathlib import Path
-from graph_gen import graph_guide_tree
-from outputs_gen import save_guide_tree
+import graph_gen
+import outputs_gen
+import log_gen
 
 
 class GuideTree:
@@ -33,6 +33,8 @@ class GuideTree:
         self.root = GuideNode(guide_tree=self, init_duplex=initial_duplex)
 
         self.guide_nodes_all = [self.root]
+        self.guide_nodes_series = pd.Series(data=self.root.init_sequence.seq)
+        self.existing_children_uses = 0
         self.guide_nodes_current = [self.root]
 
         self.guide_levels = 1
@@ -49,27 +51,48 @@ class GuideTree:
             if not self.guide_nodes_current:
                 self.is_complete = True
 
-        print(f'***********************************************************\n{self.cache_uses} cache uses.')
-        self.graph = graph_guide_tree(self)
-        self.output_data = save_guide_tree(self)
+        print(f'***********************************************************\n'
+              f'{self.cache_uses} cache uses.\n'
+              f'{self.existing_children_uses} existing children uses.')
+        self.graph = graph_gen.graph_guide_tree(self)
+        self.output_data = outputs_gen.save_guide_tree(self)
+        self.guide_nodes_series.to_csv(self.output_data[1].parent / 'sequence_series')
 
     def log(self, prev_nodes=0, message=None) -> None:
         """Appends the latest guide tree-building event to the log file."""
 
         if message:
-            append_log(log_path=self.log_path, new_events=message)
+            log_gen.append_log(log_path=self.log_path, new_events=message)
         else:
             last_timestamp = self.timestamp
             self.timestamp = time.perf_counter()
-            hrs, mins, secs = convert_timestamp(time_start=last_timestamp, time_end=self.timestamp)
+            hrs, mins, secs = log_gen.convert_timestamp(time_start=last_timestamp, time_end=self.timestamp)
 
             lvl_complete_msg = f'Level {self.guide_levels - 1} complete. Nodes processed: {prev_nodes}\n'
             elapsed = f'Elapsed time: {hrs} hours, {mins} minutes, {secs:0.2f} seconds\n'
             gen_msg = f'Level {self.guide_levels} guide nodes generated. Nodes created: {len(self.guide_nodes_current)}\n'
 
-            append_log(log_path=self.log_path, new_events=[lvl_complete_msg, elapsed, gen_msg])
+            log_gen.append_log(log_path=self.log_path, new_events=[lvl_complete_msg, elapsed, gen_msg])
 
         return None
+
+    def get_existing_children(self, sequence: str):
+        """Checks the init sequences of all existing guide nodes to see if the output sequence has already
+        been generated previously."""
+
+        series = self.guide_nodes_series
+        matches = series[series == sequence]
+        matching_indices = matches.index.to_list()
+
+        children = [self.guide_nodes_all[i] for i in matching_indices]
+
+        if matching_indices:
+            print('matches found ***************************************')
+        else:
+            print('no matches ********************')
+
+        return children
+
 
     def grow_tree(self):
         """Grows the tree by instantiating child nodes for all the non-terminal guide nodes."""
@@ -78,14 +101,15 @@ class GuideTree:
         nodes_num_to_process = len(self.guide_nodes_current)
         for guide_node in self.guide_nodes_current:
             print(f'Processing parent guide node {guide_node.node_number} of {nodes_num_to_process}')
-            if not guide_node.is_terminal:
+            if (not guide_node.child_generation_investigated) & (not guide_node.is_terminal):
                 guide_node.gen_children()
-                for i, child_node in enumerate(guide_node.children):
-                    child_node.node_number = len(next_nodes) + 1 + i
+                for child_node in guide_node.children:
+                    child_node.node_number = len(next_nodes) + 1
+                    next_nodes.append(child_node)
                     print(f'Guide node Level {child_node.guide_level}, Node {child_node.node_number} created.')
-                next_nodes += guide_node.children
+
         # self.save_guide_nodes()
-        self.guide_nodes_all += next_nodes
+        # self.guide_nodes_all += next_nodes
         self.guide_nodes_current = next_nodes
 
         return None

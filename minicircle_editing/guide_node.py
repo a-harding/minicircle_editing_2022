@@ -6,10 +6,11 @@ import numpy as np
 import uuid
 
 import pandas as pd
+import time
 
 from docking import select_guides
 from edit_trees import EditTree
-from run_settings import editing_window, short_sequence_editing
+from run_settings import editing_window, short_sequence_editing, max_no_grnas_subsequent, min_no_grnas_subsequent
 from sequence_import import Sequence
 from outputs_gen import save_edit_tree
 from type_definitions import OutputNodes
@@ -20,7 +21,9 @@ class GuideNode:
 
     def __init__(self, init_duplex: list, parent=None, seq_num=0, guide_num=0, guide_tree=None):
         self.parent = parent
+        self.parents = [self.parent]
         self.children = []
+        self.child_generation_investigated = False
         self.node_number: int
 
         if self.parent:
@@ -63,7 +66,7 @@ class GuideNode:
         self.prior = self.check_cache()
         # assigns the progressed sequences from the prior computation if applicable
         if self.prior:
-            print('*****\nPrior guide node computation used. No edit tree generated.\n*****')
+            # print('*****\nPrior guide node computation used. No edit tree generated.\n*****')
             self.progressed_sequences = self.prior
         # in the absence of a prior computation, produces the edit tree as standard
         else:
@@ -86,11 +89,33 @@ class GuideNode:
         """Generates child guide nodes for each of the sequences that meet the criteria for progression."""
 
         for si, (sequence, mIndex) in enumerate(self.progressed_sequences):
-            for gi, duplex in enumerate(select_guides(
-                    messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
-                    guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 5)):
-                new_guide_node = GuideNode(init_duplex=duplex, parent=self, seq_num=si + 1, guide_num=gi + 1)
-                self.children.append(new_guide_node)
+            existing_children = self.guide_tree.get_existing_children(sequence.seq)
+            if existing_children:
+                # print('***\nChildren already exist\n***')
+                self.children += existing_children
+                # print('\n\nSleeping\n\n')
+                # time.sleep(5)
+                for child in existing_children:
+                    child.parents.append(self)
+                self.guide_tree.existing_children_uses += 1
+            else:
+                for gi, duplex in enumerate(select_guides(
+                        messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
+                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 5)):
+
+                    # generate child nodes for the minimum number of guides to consider.
+                    progressed_count = sum([1 for child in self.children if child.progressed_sequences])
+                    conditions = (gi < min_no_grnas_subsequent) | ((gi < max_no_grnas_subsequent) & (progressed_count == 0))
+                    if conditions:
+                        new_guide_node = GuideNode(init_duplex=duplex, parent=self, seq_num=si + 1, guide_num=gi + 1)
+                        self.children.append(new_guide_node)
+                        new_guide_init_seq = pd.Series(data=new_guide_node.init_sequence.seq)
+                        self.guide_tree.guide_nodes_series = self.guide_tree.guide_nodes_series.append(
+                            new_guide_init_seq, ignore_index=True)
+                        self.guide_tree.guide_nodes_all.append(new_guide_node)
+
+        self.child_generation_investigated = True
+
 
     def cache_outputs(self) -> None:
         """Takes the key components of the guide node and places them into a results cache in the 'guide_tree'.
