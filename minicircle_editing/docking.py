@@ -11,7 +11,7 @@ from sequence_import import Sequence
 from type_definitions import CofoldMode, DockingMode, gRNAExclusion
 from run_settings import (
     no_of_grnas_first, max_no_grnas_subsequent, editing_window, docking_mode, max_anchor, min_anchor, guides_to_cofold,
-    previous_gRNA_exclusion, cofold_mode, proportion_to_dock, minimum_mfe, guide_end_allowance,
+    previous_gRNA_exclusion, cofold_mode, proportion_to_dock, minimum_mfe, guide_end_allowance, all_guides_below,
     mismatch_threshold_anchor as mismatches_allowed
 )
 
@@ -28,9 +28,6 @@ def split_convert(sequence: str) -> np.array:
 
 def align_guide(messenger: np.array, guide: np.array) -> dict:
     """Aligns the guide to the reference mRNA sequence by projecting both sequences together into a matrix."""
-
-    # if len(guide.shape) == 1:
-    #     guide = guide.reshape(len(guide), 1)
 
     matrix = np.where((np.abs(messenger - guide) % 10) == 1, 0, 1)
 
@@ -105,16 +102,14 @@ def gen_cofold_string(messenger_sequence: str, guide_sequence: str, docking_idx:
 
     mrna_trimmed = mrna_trimmed[::-1]
 
-    # print(f'G: {guide_trimmed} - {len(guide_trimmed)}')
-    # print(f'M: {mrna_trimmed} - mI {mIndex}, full_len {len(messenger_sequence)} - {len(mrna_trimmed)}')
-
     cofold_string = f'{mrna_trimmed}&{guide_trimmed}'
-    # CHECKING IF THERE IS AN ERROR IN PRODUCING THE COFOLD STRING - BASED ON AN INDEX ERROR
-    if cofold_string[0] == '&':
-        print('No mRNA string!\nSleeping...')
-        for i in range(60):
-            print(60 - i)
-            time.sleep(1)
+
+    # # CHECKING IF THERE IS AN ERROR IN PRODUCING THE COFOLD STRING - BASED ON AN INDEX ERROR
+    # if cofold_string[0] == '&':
+    #     print('No mRNA string!\nSleeping...')
+    #     for i in range(60):
+    #         print(60 - i)
+    #         time.sleep(1)
 
     return cofold_string
 
@@ -140,7 +135,9 @@ def normalise_mfe(MFE_df: pd.DataFrame, current_mIndex) -> pd.DataFrame:
     mfes = MFE_df['MFE'].to_numpy()
     idxs = MFE_df['mDock'].to_numpy()
 
-    z_score = abs((current_mIndex - idxs) / (editing_window * 2))
+    window = 15
+
+    z_score = abs((current_mIndex - idxs) / (window * 2))
     normalisation_factor = (1 - st.norm.cdf(z_score)) * 2
     adjusted_mfes = mfes * normalisation_factor
 
@@ -212,7 +209,7 @@ def get_excluded_guides(previous_guides: list) -> list:
         if previous_gRNA_exclusion is gRNAExclusion.ALL:
             return previous_guides
         elif previous_gRNA_exclusion is gRNAExclusion.ONE:
-            return previous_guides[-1]
+            return [previous_guides[-1]]
         elif previous_gRNA_exclusion is gRNAExclusion.NONE:
             return []
     else:
@@ -236,7 +233,8 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
     candidates_sorted = sort_candidates(mfe_df, current_mIndex, initial=initial)
 
     mfe_filtered = candidates_sorted[candidates_sorted['MFE'] < minimum_mfe].reset_index(drop=True)
-    # print(candidates_sorted.head(4))
+
+    # print(candidates_sorted.head(10))
 
     if initial:
         no_of_guides = no_of_grnas_first
@@ -246,7 +244,7 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
     # time.sleep(5)
     output_duplexes = []
     for i in range(len(mfe_filtered['Guide_name'])):
-        if len(output_duplexes) == no_of_guides:
+        if (len(output_duplexes) >= no_of_guides) & (mfe_filtered.iloc[i]['MFE'] > all_guides_below):
             break
         if any(mfe_filtered['Guide_name'].loc[i] in l for l in output_duplexes):
             print(f'Guide {i} has a preferred alternative binding site.')

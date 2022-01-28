@@ -43,7 +43,7 @@ class GuideTree:
 
         self.log(prev_nodes=0)
 
-        while (not self.is_complete) and (self.guide_levels < 20):
+        while (not self.is_complete) and (self.guide_levels < 10):
             nodes_to_process = len(self.guide_nodes_current)
             self.grow_tree()
             self.guide_levels += 1
@@ -99,14 +99,14 @@ class GuideTree:
 
         next_nodes = []
         nodes_num_to_process = len(self.guide_nodes_current)
-        for guide_node in self.guide_nodes_current:
-            print(f'Processing parent guide node {guide_node.node_number} of {nodes_num_to_process}')
+        for i, guide_node in enumerate(self.guide_nodes_current):
+            guide_node.node_number = i + 1
+            print(f'Processing (Level {guide_node.guide_level}) parent guide node {i + 1} of {nodes_num_to_process}')
             if (not guide_node.child_generation_investigated) & (not guide_node.is_terminal):
                 guide_node.gen_children()
                 for child_node in guide_node.children:
-                    child_node.node_number = len(next_nodes) + 1
                     next_nodes.append(child_node)
-                    print(f'Guide node Level {child_node.guide_level}, Node {child_node.node_number} created.')
+                    # print(f'Guide node Level {child_node.guide_level}, Node {child_node.node_number} created.')
 
         # self.save_guide_nodes()
         # self.guide_nodes_all += next_nodes

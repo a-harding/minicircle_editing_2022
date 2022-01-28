@@ -191,7 +191,7 @@ def graph_guide_tree(guide_tree):
         # guide = f'gSeq: {guide_node.guide.seq[guide_node.edit_tree.init_gIndex:]}'
         tot_err = f'Errors in progressed: {guide_node.errors_accumulated}'
 
-        text = f'{guide}\n{dock_idx}\n{progressed_count}\n{tot_err}'
+        text = f'{dock_idx}\n{progressed_count}\n{tot_err}'
 
         return text
 
@@ -205,9 +205,15 @@ def graph_guide_tree(guide_tree):
         progress = ((init_dock_idx) / init_sequence.length) * 100
         # graph.attr('node', shape='ellipse', fillcolor=f'gray{100 - progress: 0.0f}')
         if len(node.parents) > 1:
-            graph.attr('node', shape='ellipse', fillcolor=f'blue')
+            colour = 'blue'
         else:
-            graph.attr('node', shape='ellipse', fillcolor=f'gray99')
+            colour = 'gray99'
+
+        if len(node.errors_accumulated):
+            if min(node.errors_accumulated) == 0:
+                colour = 'green'
+
+        graph.attr('node', shape='ellipse', fillcolor=colour)
         graph.node(str(node.id), node_text)
 
     # adds edge for each parent-child pair, even if the child has multiple parents
@@ -215,12 +221,14 @@ def graph_guide_tree(guide_tree):
         # if node.parent:
         shapes = {1: 'normal', 2: 'box', 3: 'curve', 4: 'dot', 5: 'inv', 6: 'tee'}
         colors = {1: 'green', 2: 'gold', 3: 'blue', 4: 'hotpink', 5: 'black', 6: 'azure4'}
-        guide_num = node.guide_num
+
         seq_num = node.seq_num
-        graph.attr('edge', arrowhead=shapes[1], color=colors[1])
+
         for child in node.children:
+            guide_num = child.guide_num
+            graph.attr('edge', arrowhead=shapes[1], color=colors[min(guide_num, 6)])
             # tail_name = parent, head_name = child
-            graph.edge(tail_name=node.id, head_name=child.id)
+            graph.edge(label=child.g_name_short, tail_name=node.id, head_name=child.id)
 
     graph.attr('edge', style='solid')
 

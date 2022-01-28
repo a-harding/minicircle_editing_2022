@@ -519,7 +519,7 @@ class EditTree:
         # its terminal state and no further growth is possible. It is therefore set to complete
         if not self.edit_nodes_next:
             self.is_complete = True
-            print(f'Edit tree completed with {self.edit_levels} levels, {len(self.edit_nodes_all)} nodes.')
+            # print(f'Edit tree completed with {self.edit_levels} levels, {len(self.edit_nodes_all)} nodes.')
 
     def select_progressed_nodes(self) -> list:
         """Takes all the COMPLETE nodes from the edit tree and selects the sequences to progress to the subsequent

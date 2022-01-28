@@ -19,7 +19,7 @@ from type_definitions import OutputNodes
 class GuideNode:
     """Contains details of a single guide RNA interaction with an mRNA sequence."""
 
-    def __init__(self, init_duplex: list, parent=None, seq_num=0, guide_num=0, guide_tree=None):
+    def __init__(self, init_duplex: list, parent=None, seq_num=0, guide_num=1, guide_tree=None):
         self.parent = parent
         self.parents = [self.parent]
         self.children = []
@@ -38,13 +38,15 @@ class GuideNode:
 
         self.seq_num = seq_num
         self.guide_num = guide_num
-        self.id = f'{self.guide_tree.id}_L{self.guide_level}_S{seq_num}_G{guide_num}_{uuid.uuid4()}'
 
         self.duplex = init_duplex
         # initial_duplex is list with order [guide_name, mRNA_dock_index, mRNA_sequence, guide_index]
         self.guide_name = self.duplex[0]
         self.guide_sequence = self.guide_tree.guides_dict[self.guide_name]
         self.init_gIndex = self.duplex[3]
+
+        self.g_name_short = self.guide_name.split('_')[1]
+        self.id = f'{self.g_name_short}_L{self.guide_level:02d}_S{seq_num:02d}_G{guide_num:02d}_{uuid.uuid4()}'
 
         self.init_sequence = self.duplex[2]
         self.init_dock_idx = self.duplex[1]
@@ -101,12 +103,13 @@ class GuideNode:
             else:
                 for gi, duplex in enumerate(select_guides(
                         messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
-                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 15)):
+                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 20)):
 
                     # generate child nodes for the minimum number of guides to consider.
                     progressed_count = sum([1 for child in self.children if child.progressed_sequences])
-                    conditions = (gi < min_no_grnas_subsequent) | ((gi < max_no_grnas_subsequent) & (progressed_count == 0))
-                    if conditions:
+                    # conditions = (gi < min_no_grnas_subsequent) | ((gi < max_no_grnas_subsequent) & (progressed_count == 0))
+                    # if conditions:
+                    if True:
                         new_guide_node = GuideNode(init_duplex=duplex, parent=self, seq_num=si + 1, guide_num=gi + 1)
                         self.children.append(new_guide_node)
                         new_guide_init_seq = pd.Series(data=new_guide_node.init_sequence.seq)
