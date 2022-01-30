@@ -43,7 +43,7 @@ class GuideTree:
 
         self.log(prev_nodes=0)
 
-        while (not self.is_complete) and (self.guide_levels < 10):
+        while (not self.is_complete) and (self.guide_levels < 100):
             nodes_to_process = len(self.guide_nodes_current)
             self.grow_tree()
             self.guide_levels += 1
@@ -55,7 +55,7 @@ class GuideTree:
               f'{self.cache_uses} cache uses.\n'
               f'{self.existing_children_uses} existing children uses.')
         self.output_data: list
-        self.graph = graph_gen.graph_guide_tree(self)
+        # self.graph = graph_gen.graph_guide_tree(self)
         self.guide_nodes_series.to_csv(self.output_data[1].parent / 'sequence_series')
 
     def log(self, prev_nodes=0, message=None) -> None:
@@ -101,7 +101,7 @@ class GuideTree:
         nodes_num_to_process = len(self.guide_nodes_current)
         for i, guide_node in enumerate(self.guide_nodes_current):
             guide_node.node_number = i + 1
-            print(f'Processing (Level {guide_node.guide_level}) parent guide node {i + 1} of {nodes_num_to_process}')
+            print(f'Processing (Level {self.guide_levels}) parent guide node {i + 1} of {nodes_num_to_process}')
             if (not guide_node.child_generation_investigated) & (not guide_node.is_terminal):
                 guide_node.gen_children()
                 for child_node in guide_node.children:
@@ -125,4 +125,4 @@ class GuideTree:
                 file_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(file_path, mode='wb') as f:
                     pickle.dump(guide_node, f)
-                guide_node = file_path
+                guide_node = file_pat

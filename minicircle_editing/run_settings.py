@@ -29,4 +29,4 @@ proportion_to_dock = 0.5
 minimum_mfe = -4
 minimum_adjusted_mfe = -7
 min_mfe_to_progress = -20
-all_guides_below = -11
+all_guides_below = -9
