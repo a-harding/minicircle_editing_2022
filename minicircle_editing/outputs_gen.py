@@ -40,7 +40,7 @@ def save_edit_tree(guide_node, which_nodes: OutputNodes) -> Path:
     tree = guide_node.guide_tree
     level = f'Level_{guide_node.guide_level:03d}'
 
-    dest_addr = tree.log_path.parent / tree.id / level / guide_node.id / 'edit_node_values'
+    dest_addr = guide_node.output_path / 'edit_node_values'
     dest_addr.parent.mkdir(parents=True, exist_ok=True)
 
     df_of_edit_nodes.to_csv(dest_addr)

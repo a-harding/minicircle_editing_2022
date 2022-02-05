@@ -10,10 +10,11 @@ import time
 
 from docking import select_guides
 from edit_trees import EditTree
-from run_settings import editing_window, short_sequence_editing, max_no_grnas_subsequent, min_no_grnas_subsequent
+from run_settings import editing_window, short_sequence_editing, max_anchor, max_grnas_subsequent, min_grnas_subsequent
 from sequence_import import Sequence
 from outputs_gen import save_edit_tree
 from type_definitions import OutputNodes
+from pathlib import Path
 
 
 class GuideNode:
@@ -47,10 +48,19 @@ class GuideNode:
 
         self.g_name_short = self.guide_name.split('_')[1]
         self.id = f'{self.g_name_short}_L{self.guide_level:02d}_S{seq_num:02d}_G{guide_num:02d}_{uuid.uuid4()}'
+        self.output_path = self.guide_tree.log_path.parent / f'{self.guide_tree.id}' \
+                                                             f'/Level_{self.guide_level:03d}/{self.id}'
 
         self.init_sequence = self.duplex[2]
         self.init_dock_idx = self.duplex[1]
         self.init_mIndex = self.init_dock_idx + self.init_gIndex
+
+        if self.init_dock_idx == (
+                self.guide_tree.known_edited_sequence.length - int(self.guide_name.split('-')[1].split(')')[0])
+        ):
+            self.correct_dock = True
+        else:
+            self.correct_dock = False
 
         if short_sequence_editing:
             self.sequence_fragments = self.trim_editing_sequence()
@@ -101,15 +111,19 @@ class GuideNode:
                     child.parents.append(self)
                 self.guide_tree.existing_children_uses += 1
             else:
-                for gi, duplex in enumerate(select_guides(
-                        messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
-                        guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - 20)):
+                duplexes, docked_guides_df = select_guides(
+                    messenger=sequence, previous_guides=self.prev_guides + [self.guide_name],
+                    guides_dict=self.guide_tree.guides_dict, current_mIndex=mIndex - max_anchor
+                )
+                if len(docked_guides_df):
+                    docked_guides_df.to_csv(self.output_path / f'docked_guides_s{si:02d}')
 
+                for gi, duplex in enumerate(duplexes):
                     # generate child nodes for the minimum number of guides to consider.
-                    progressed_count = sum([1 for child in self.children if child.progressed_sequences])
-                    # conditions = (gi < min_no_grnas_subsequent) | ((gi < max_no_grnas_subsequent) & (progressed_count == 0))
-                    # if conditions:
-                    if True:
+                    progressed_count = sum([1 for child in self.children if child.correct_dock])
+                    conditions = (gi < min_grnas_subsequent) | ((gi < max_grnas_subsequent) & (progressed_count == 0))
+                    if conditions:
+                    # if True:
                         new_guide_node = GuideNode(init_duplex=duplex, parent=self, seq_num=si + 1, guide_num=gi + 1)
                         self.children.append(new_guide_node)
                         new_guide_init_seq = pd.Series(data=new_guide_node.init_sequence.seq)
@@ -179,7 +193,7 @@ class GuideNode:
         # the two indices that will be used to select out the mRNA region to be used in editing
 
         # start_idx uses the first base the guide docks at (init_dock_idx), with an additional n bases 3-prime
-        # (as specified by 'editing_window') to allow for the 'CofoldType.EDITING_WINDOW' mode of RNA cofolding
+        # (as specified by 'editing_window') to allow for the 'CofoldType.WINDOW_CENTRED' mode of RNA cofolding
         # if the docking site is too 3-prime to allow for the additional n bases, all 3-prime bases are included
         if (self.init_dock_idx - editing_window) < 0:
             start_idx = 0

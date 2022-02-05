@@ -6,3 +6,4 @@ trash/
 minicircle_editing/support_files/
 Outputs/
 *.swp
+*.egg-info

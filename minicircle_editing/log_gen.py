@@ -13,7 +13,7 @@ def gen_setup_file(gene: str, paths: list[Path]) -> Path:
     start_date = date.today()
     start_time = time.strftime("%H-%M-%S", time.localtime())
 
-    dest_dir = Path.home() / Path(f'Documents/SchnauferLab/Data/{gene}/{start_date}_{start_time}')
+    dest_dir = Path.home() / Path(f'Documents/HPGH/SchnauferLab/Data/{gene}/{start_date}_{start_time}')
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     log_filename = f'initiator_settings.txt'
@@ -28,7 +28,7 @@ def gen_setup_file(gene: str, paths: list[Path]) -> Path:
                 f'Path to gRNA pool: {path_g}\n'
                 f'\n*****\ngRNA SELECTION\n*****\n'
                 f'Number of gRNAs investigated (first round, subsequent rounds): {no_of_grnas_first}, '
-                f'{min_no_grnas_subsequent}\n'
+                f'{min_grnas_subsequent}\n'
                 f'Normalisation of docking by proximity to editing site: {docking_mode}\n'
                 f'How many previously used gRNAs are excluded from subsequent gRNA selection: {previous_gRNA_exclusion}\n'
                 f'Maximum number of sequences progressed from a single gRNA\'s editing tree: {sequences_to_progress}\n'
@@ -37,9 +37,10 @@ def gen_setup_file(gene: str, paths: list[Path]) -> Path:
                 f'Mismatches allowed in anchor region: {mismatch_threshold_anchor}\n'
                 f'\n*****\nEDITING\n*****\n'
                 f'Mismatches allowed in editing: {mismatch_threshold_editing}\n'
-                f'Determine probability by comparing the MFE of all nodes of a single level: {compare_all_nodes}\n'
                 f'Probability threshold, below which a node is converted to a leaf: {probability_threshold}\n'
+                f'RNAcofold mode: {cofold_mode}\n'
                 f'Length of editing window: {editing_window}\n'
+                f'Bulk cofold mode active: {bulk_cofold}'
                 f'\n*****\nRUN LOG\n*****\n')
 
     return log_path

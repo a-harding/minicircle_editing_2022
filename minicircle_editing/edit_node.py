@@ -1,5 +1,5 @@
 """Defines the class of edit node and associated functions. Each node is an editing decision at a single base."""
-import time
+
 
 from sequence_import import Sequence
 from docking import gen_cofold_string

@@ -18,8 +18,8 @@ def produce_match_string(edit_node) -> str:
     post_m_seq = edit_node.sequence.seq
     g_seq = edit_node.guide.seq
 
-    length_lead = 10
-    length_trail = 5
+    length_lead = 3
+    length_trail = 4
 
     trimmed_prior_m_seq = f'{prior_m_seq[current_m_idx - length_lead:current_m_idx]}' \
                           f'{prior_m_seq[current_m_idx].upper()}' \
@@ -78,11 +78,6 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
         print('Edit node total exceeds acceptable graphable threshold. No edit tree graph generated.')
         return None
 
-    colourschemes = {0: 'bupu', 1: 'purd', 2: 'pubu', 3: 'bugn', 4: 'blues', 5: 'greys', 6: 'oranges',
-                     7: 'purples', 8: 'reds'}
-    scheme = colourschemes[0]
-    graph.attr('node', style='filled', colorscheme=scheme + str(2 + 2), fontname='monospace')
-
     def create_edit_node_text(edit_node) -> str:
         """Produces text content for nodes in the tree graph."""
 
@@ -97,8 +92,8 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
         try:
             mfe = f'MFE: {edit_node.mfe: 0.5f}'
             align = edit_node.alignment
-            prob = f'Probability {edit_node.probability:0.4f}'
-            prob_prod = f'Probability (Product): {edit_node.probability_product:0.4f}'
+            prob = f'Prob {edit_node.probability:0.3f}'
+            prob_prod = f'Prob_prod: {edit_node.probability_product:0.3f}'
         except AttributeError:
             mfe = f'MFE not calculated'
             align = 'No alignment'
@@ -112,9 +107,17 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
         # pairs = f'Pairs: {node.pairs}'
         match = produce_match_string(edit_node=edit_node)
 
-        text = f'{dock}\n{gIdx}\n{mismatches}\n{action_log}\n{prob}\n{match}'
+        if edit_node.parent:
+            text = f'{mismatches}\n{prob}\n{prob_prod}\n{match}'
+        else:
+            text = 'Root Node'
 
         return text
+
+    colourschemes = {0: 'bupu', 1: 'purd', 2: 'pubu', 3: 'bugn', 4: 'blues', 5: 'greys', 6: 'oranges',
+                     7: 'purples', 8: 'reds'}
+    scheme = colourschemes[0]
+    graph.attr('node', style='filled', fontname='monospace', colorscheme=scheme + str(2 + 2))
 
     for node in all_nodes:
         node_text = create_edit_node_text(node)
@@ -122,7 +125,16 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
         if node.progressed:
             node_shape = 'square'
         else:
-            node_shape = 'ellipse'
+            # node_shape = 'ellipse'
+            node_shape = 'circle'
+
+        # colour_num = min(1, node.probability_product) * 100
+        # colour = f'grey{colour_num:0.0f}'
+        # if colour_num < 60:
+        #     text_colour = 'white'
+        # else:
+        #     text_colour = 'black'
+        # graph.attr('node', shape=node_shape, fontcolor = text_colour, fillcolor = colour)
         graph.attr('node', shape=node_shape, fillcolor=str(min(int(node.mismatches), 2 + 1) + 1))
         graph.node(str(node.id), node_text)
 
@@ -139,7 +151,9 @@ def graph_edit_tree(edit_tree) -> gv.Digraph:
     for parent in all_nodes:
         # tail_name = parent, head_name = child
         for child in parent.children:
-            graph.edge(tail_name=parent.id, head_name=child.id)
+            actions = {'p': 'blue', 'd': 'red', 'i': 'green'}
+            colour = actions[child.action]
+            graph.edge(tail_name=parent.id, head_name=child.id, color=colour)
 
     graph.attr('edge', style='solid')
 
@@ -174,7 +188,8 @@ def graph_guide_tree(guide_tree):
             else:
                 prog_seqs = 'None'
 
-        id = f'ID: {guide_node.id}'
+        id_split = guide_node.id.split('-')[0].split('_')
+        id = f'{id_split[0]}\n{id_split[1]}\n{id_split[4]}'
         # type = f'Node Type: {guide_node.node_type}'
         # gIdx = f'Guide Index: {guide_node.gIndex}'
         dock_idx = f'Dock Index: {init_dock_idx}'
@@ -191,7 +206,7 @@ def graph_guide_tree(guide_tree):
         # guide = f'gSeq: {guide_node.guide.seq[guide_node.edit_tree.init_gIndex:]}'
         tot_err = f'Errors in progressed: {guide_node.errors_accumulated}'
 
-        text = f'{dock_idx}\n{progressed_count}\n{tot_err}'
+        text = f'{id}\n{dock_idx}\n{tot_err}'
 
         return text
 
@@ -204,14 +219,20 @@ def graph_guide_tree(guide_tree):
         # to define a percentage of progression.
         progress = ((init_dock_idx) / init_sequence.length) * 100
         # graph.attr('node', shape='ellipse', fillcolor=f'gray{100 - progress: 0.0f}')
-        if len(node.parents) > 1:
-            colour = 'blue'
-        else:
-            colour = 'gray99'
 
-        if len(node.errors_accumulated):
-            if min(node.errors_accumulated) == 0:
-                colour = 'green'
+        if len(node.parents) > 1:
+            colour = 'grey94'
+        else:
+            colour = 'grey99'
+
+        # if len(node.errors_accumulated):
+        #     if min(node.errors_accumulated) == 0:
+        #         colour = 'green'
+        # else:
+        #     colour = 'red'
+
+        if node.correct_dock:
+            colour = 'green'
 
         graph.attr('node', shape='ellipse', fillcolor=colour)
         graph.node(str(node.id), node_text)
@@ -228,7 +249,9 @@ def graph_guide_tree(guide_tree):
             guide_num = child.guide_num
             graph.attr('edge', arrowhead=shapes[1], color=colors[min(guide_num, 6)])
             # tail_name = parent, head_name = child
-            graph.edge(label=child.g_name_short, tail_name=node.id, head_name=child.id)
+            graph.edge(label=child.g_name_short,
+                       tail_name=node.id,
+                       head_name=child.id)
 
     graph.attr('edge', style='solid')
 

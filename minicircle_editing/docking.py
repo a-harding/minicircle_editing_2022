@@ -1,7 +1,6 @@
 """Performs the docking of guide RNAs to the mRNA sequence and selects the appropriate guide(s) to progress
 to the stage of editing."""
-import pprint
-import time
+
 
 import numpy as np
 import pandas as pd
@@ -10,7 +9,7 @@ import RNA
 from sequence_import import Sequence
 from type_definitions import CofoldMode, DockingMode, gRNAExclusion
 from run_settings import (
-    no_of_grnas_first, max_no_grnas_subsequent, editing_window, docking_mode, max_anchor, min_anchor, guides_to_cofold,
+    no_of_grnas_first, max_grnas_subsequent, editing_window, docking_mode, max_anchor, min_anchor, guides_to_cofold,
     previous_gRNA_exclusion, cofold_mode, proportion_to_dock, minimum_mfe, guide_end_allowance, all_guides_below,
     mismatch_threshold_anchor as mismatches_allowed
 )
@@ -29,7 +28,11 @@ def split_convert(sequence: str) -> np.array:
 def align_guide(messenger: np.array, guide: np.array) -> dict:
     """Aligns the guide to the reference mRNA sequence by projecting both sequences together into a matrix."""
 
-    matrix = np.where((np.abs(messenger - guide) % 10) == 1, 0, 1)
+    # Option 1 allows for GU pairing
+    # matrix = np.where((np.abs(messenger - guide) % 10) == 1, 0, 1)
+
+    # Option 2 only allows for GC and AU pairing
+    matrix = np.where(np.abs(messenger - guide) == 1, 0, 1)
 
     for i in range(1, guide.size):
         matrix[i] = np.hstack((matrix[i, i:], np.full(i, 9)))
@@ -81,7 +84,7 @@ def gen_cofold_string(messenger_sequence: str, guide_sequence: str, docking_idx:
             guide_trimmed = guide_sequence[:guide_index + 1]
         elif cofold_mode is CofoldMode.TO_INDEX_PLUS:
             guide_trimmed = guide_sequence[:min(guide_index + 1 + editing_window, len(guide_sequence) - 1)]
-        elif cofold_mode is CofoldMode.EDITING_WINDOW:
+        elif cofold_mode is CofoldMode.WINDOW_CENTRED:
             idx_lower = max(0, guide_index + 1 - half_window)
             idx_upper = min(guide_index + half_window, len(guide_sequence) - 1)
             guide_trimmed = guide_sequence[idx_lower:idx_upper]
@@ -95,7 +98,7 @@ def gen_cofold_string(messenger_sequence: str, guide_sequence: str, docking_idx:
         trimmed_index = max_anchor
         guide_trimmed = guide_sequence[:trimmed_index]
 
-    if (not gIndex) or (cofold_mode is not CofoldMode.EDITING_WINDOW):
+    if (not gIndex) or (cofold_mode is not CofoldMode.WINDOW_CENTRED):
         midx_lower = docking_idx
         midx_upper = min(len(guide_trimmed) + docking_idx, len(messenger_sequence))
         mrna_trimmed = messenger_sequence[midx_lower:midx_upper]
@@ -114,7 +117,8 @@ def gen_cofold_string(messenger_sequence: str, guide_sequence: str, docking_idx:
     return cofold_string
 
 
-def determine_mfe(messenger_sequence: str, guides_dict: dict, indices_dict: dict) -> pd.DataFrame:
+def determine_mfe(messenger_sequence: str, guides_dict: dict,
+                  indices_dict: dict, previous_index: int) -> pd.DataFrame:
     """Calculate MFE using RNAcofold prediction algorithm."""
 
     MFE_pair_list = []
@@ -123,10 +127,10 @@ def determine_mfe(messenger_sequence: str, guides_dict: dict, indices_dict: dict
         for idx in indices:
             cofold_string = gen_cofold_string(messenger_sequence, guides_dict[name].seq, idx)
             alignment, MFE = RNA.cofold(cofold_string)
-            MFE_temp_list.append([name, idx, MFE])
+            MFE_temp_list.append([name, idx, MFE, previous_index])
         MFE_pair_list += MFE_temp_list
 
-    return pd.DataFrame(MFE_pair_list, columns=['Guide_name', 'mDock', 'MFE'])
+    return pd.DataFrame(MFE_pair_list, columns=['Guide_name', 'mDock', 'MFE', 'prev_index'])
 
 
 def normalise_mfe(MFE_df: pd.DataFrame, current_mIndex) -> pd.DataFrame:
@@ -135,7 +139,7 @@ def normalise_mfe(MFE_df: pd.DataFrame, current_mIndex) -> pd.DataFrame:
     mfes = MFE_df['MFE'].to_numpy()
     idxs = MFE_df['mDock'].to_numpy()
 
-    window = 15
+    window = 5
 
     z_score = abs((current_mIndex - idxs) / (window * 2))
     normalisation_factor = (1 - st.norm.cdf(z_score)) * 2
@@ -168,7 +172,12 @@ def sort_candidates(mfe_df: pd.DataFrame, current_mIndex=0, initial=False) -> pd
 def get_index(messenger_sequence: str, guide_sequence: str, dock_index: int):
     """Aligns the candidate sequences and determines the base to begin editing - the gIndex."""
 
-    match_set = {'gc', 'cg', 'au', 'ua', 'gu', 'ug'}
+    # Option 1 allows GU pairing in anchor region
+    # match_set = {'gc', 'cg', 'au', 'ua', 'gu', 'ug'}
+
+    # Option 2 doesn't allow GU pairing in anchor region
+    match_set = {'gc', 'cg', 'au', 'ua'}
+
     anchor_length = 0
     mismatches = 0
     consecutive_mismatches = 0
@@ -188,7 +197,7 @@ def get_index(messenger_sequence: str, guide_sequence: str, dock_index: int):
                 index_chosen = True
         anchor_length += 1
 
-        if mismatches == mismatches_allowed:
+        if mismatches > mismatches_allowed:
             index_chosen = True
 
         if index_chosen:
@@ -221,7 +230,7 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
 
     if previous_guides:
         if len(guides_dict) == len(previous_guides):
-            return []
+            return [], []
 
     excluded_guides = get_excluded_guides(previous_guides)
     messenger_sequence = messenger.seq
@@ -229,7 +238,7 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
     indices = align_all_guides(messenger_sequence=messenger_sequence,
                                guides_dict=guides_dict,
                                excluded_guides=excluded_guides)
-    mfe_df = determine_mfe(messenger_sequence, guides_dict, indices)
+    mfe_df = determine_mfe(messenger_sequence, guides_dict, indices, previous_index=current_mIndex)
     candidates_sorted = sort_candidates(mfe_df, current_mIndex, initial=initial)
 
     mfe_filtered = candidates_sorted[candidates_sorted['MFE'] < minimum_mfe].reset_index(drop=True)
@@ -239,7 +248,7 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
     if initial:
         no_of_guides = no_of_grnas_first
     else:
-        no_of_guides = max_no_grnas_subsequent
+        no_of_guides = max_grnas_subsequent
     # print('sleeping')
     # time.sleep(5)
     output_duplexes = []
@@ -257,4 +266,4 @@ def select_guides(messenger: Sequence, guides_dict: dict, previous_guides=None, 
                 candidate.append(gIndex)
                 output_duplexes.append(candidate)
 
-    return output_duplexes
+    return output_duplexes, candidates_sorted.reset_index(drop=True)

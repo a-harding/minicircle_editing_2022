@@ -52,7 +52,8 @@ class EditTree:
         # self.candidates = [edit_node for edit_node in self.edit_nodes_all if edit_node.node_type is NodeType.COMPLETE]
 
         self.progressed_nodes = self.select_progressed_nodes()
-        self.graph = graph_edit_tree(self)
+        # self.graph =
+        graph_edit_tree(self)
 
     def calc_probabilities(self, nodes_list) -> None:
         """Calls the cofold_sequence function for each node provided, then calculates the probabilities for all."""
@@ -75,7 +76,7 @@ class EditTree:
         #     working_nodes = executor.map(cofold_sequence_func, working_nodes)
         # mfes = [edit_node.mfe for edit_node in working_nodes]
 
-        if len(working_nodes) > 100:
+        if len(working_nodes) > 10_000:
             # multiprocessing option 2
             mfes = []
             cofold_sequences = [node.cofold_string for node in working_nodes]

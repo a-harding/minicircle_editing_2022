@@ -42,7 +42,7 @@ class CofoldMode(Enum):
     WHOLE_GUIDE = auto() # Includes the entire guide RNA sequence
     TO_INDEX = auto() # The 5' end of the guide, up to the current guide base being considered in editing
     TO_INDEX_PLUS = auto() # As above, plus an additional number of bases the size of the editing window
-    EDITING_WINDOW = auto() # A region the size of the editing window, centred on the current gRNA editing base
+    WINDOW_CENTRED = auto() # A region the size of the editing window, centred on the current gRNA editing base
 
 
 class NodeType(Enum):
